@@ -5,5 +5,9 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "server.js" }
-  ]
+  ],
+  "env": {
+    "MONGO_URI": "mongodb+srv://zeeshanfullstackdeveloper_db_user:wEG2NAX9ClkOFx82@cluster0.xhw2uw4.mongodb.net/job_portal",
+    "JWT_SECRET": "your-secret-here"
+  }
 }
