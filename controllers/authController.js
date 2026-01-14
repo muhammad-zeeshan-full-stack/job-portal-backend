@@ -80,13 +80,14 @@ export const register = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Registration error:', error.message);
+     console.error('❌ Registration error:', error);
     console.error('❌ Error stack:', error.stack);
     
+    // Send a clean error response without going through errorHandler
     res.status(500).json({
       success: false,
       message: "Registration failed. Please try again.",
-      error: error.message
+      error: error.message || 'Unknown error'
     });
   }
 };

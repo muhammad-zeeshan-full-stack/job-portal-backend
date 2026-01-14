@@ -7,7 +7,16 @@
     { "src": "/(.*)", "dest": "server.js" }
   ],
   "env": {
-    "MONGO_URI": "mongodb+srv://zeeshanfullstackdeveloper_db_user:wEG2NAX9ClkOFx82@cluster0.xhw2uw4.mongodb.net/job_portal",
-    "JWT_SECRET": "your-secret-here"
+    "NODE_ENV": "production",
+    "MONGODB_URI": "mongodb+srv://zeeshanfullstackdeveloper_db_user:wEG2NAX9ClkOFx82@cluster0.xhw2uw4.mongodb.net/job_portal",
+    "JWT_SECRET": "df65poi6543bn",
+    "JWT_EXPIRE": "7d",
+    "SMTP_HOST": "smtp.gmail.com",
+    "SMTP_PORT": "587",
+    "SMTP_USER": "zeeshan.fullstack.developer@gmail.com",
+    "SMTP_PASS": "lcqbcefkcrreiqwd",
+    "FROM_EMAIL": "zeeshan.fullstack.developer@gmail.com",
+    "FROM_NAME": "Job Portal",
+    "CLIENT_URL": "https://job-portal-frontend-lovat-alpha.vercel.app"
   }
 }
