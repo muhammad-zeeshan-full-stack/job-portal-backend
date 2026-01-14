@@ -9,17 +9,31 @@ import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 import errorHandler from './middleware/error.js';
 
+// Routes
+import authRoutes from './routes/auth.js';
 
-// Route files
-import auth from './routes/auth.js';
-
-// Load env vars
+// Load env variables
 dotenv.config();
 
-// Connect to database
+// Connect Database
 connectDB();
 
 const app = express();
+
+/* =========================
+   ✅ CORS (سب سے اوپر)
+========================= */
+app.use(cors({
+  origin: 'https://job-portal-frontend-lovat-alpha.vercel.app',
+  credentials: true,
+}));
+
+// ✅ Preflight request allow (بہت ضروری)
+app.options('*', cors());
+
+/* =========================
+   Middlewares
+========================= */
 
 // Body parser
 app.use(express.json());
@@ -27,66 +41,45 @@ app.use(express.json());
 // Cookie parser
 app.use(cookieParser());
 
-// Sanitize data
+// Security
 app.use(mongoSanitize());
-
-// Set security headers
 app.use(helmet());
-
-// Prevent XSS attacks
 app.use(xss());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 mins
+// Rate Limiter
+app.use(rateLimit({
+  windowMs: 10 * 60 * 1000,
   max: 100,
-});
-app.use(limiter);
-
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'https://job-portal-frontend-lovat-alpha.vercel.app'];
-
-console.log('Allowed Origins:', allowedOrigins);
-
-// CORS Configuration
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      console.log(`Blocked by CORS: ${origin}`);
-      const msg = `The CORS policy for this site does not allow access from ${origin}`;
-      return callback(new Error(msg), false);
-    }
-    
-    console.log(`Allowed by CORS: ${origin}`);
-    return callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
-// Mount routers
-app.use('/api/auth', auth);
+/* =========================
+   Routes
+========================= */
+app.use('/api/auth', authRoutes);
 
-// Error handler
+// Test route
+app.get('/', (req, res) => {
+  res.send('MERN Backend Running');
+});
+
+/* =========================
+   Error Handler
+========================= */
 app.use(errorHandler);
 
+/* =========================
+   Server Start
+========================= */
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-app.get("/", (req, res) => {
-  res.send("Mern Backend Running");
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
+/* =========================
+   Unhandled Rejection
+========================= */
+process.on('unhandledRejection', (err) => {
   console.log(`Error: ${err.message}`);
   server.close(() => process.exit(1));
 });
