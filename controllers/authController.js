@@ -32,53 +32,134 @@ const sendTokenResponse = (user, statusCode, res) => {
   });
 };
 
-// REGISTER
+
+// REGISTER - IMPROVED VERSION
 export const register = async (req, res, next) => {
   try {
+    console.log("Registration attempt:", req.body);
+    
     const { name, fullName, username, email, password, role } = req.body;
 
-    const userName = name || fullName;
-    if (!userName || !email || !password) {
-      return res.status(400).json({ success: false, message: "تمام فیلڈز لازمی ہیں" });
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email and password are required" 
+      });
     }
 
-    const safeUsername =
-      username || email.split("@")[0] + Math.floor(Math.random() * 1000);
-
-    const exists = await User.findOne({ $or: [{ email }, { username: safeUsername }] });
-    if (exists) {
-      return res.status(400).json({ success: false, message: "User already exists" });
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User with this email already exists"
+      });
     }
 
+    // Generate username if not provided
+    const safeUsername = username || 
+      email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, '') + 
+      Math.floor(Math.random() * 1000);
+
+    // Check if username already exists
+    const existingUsername = await User.findOne({ username: safeUsername });
+    if (existingUsername) {
+      return res.status(400).json({
+        success: false,
+        message: "Username already taken"
+      });
+    }
+
+    // Create user
     const user = await User.create({
-      name: userName,
+      name: name || fullName || email.split("@")[0],
       username: safeUsername,
-      email,
+      email: email.toLowerCase(),
       password,
       role: role || "candidate",
+      isEmailVerified: false
     });
 
-    // 6 digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    user.emailVerificationToken = code;
-    user.emailVerificationExpire = Date.now() + 10 * 60 * 1000;
+    console.log("User created:", user._id);
+
+    // Generate verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Save verification token
+    user.emailVerificationToken = verificationCode;
+    user.emailVerificationExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
     await user.save({ validateBeforeSave: false });
 
-    // ❗ اگر email issue ہو تو temporarily comment کر سکتے ہیں
-    await sendEmail({
-      email: user.email,
-      subject: "Verify Email",
-      message: `Your verification code is ${code}`,
-    });
+    // Try to send email (but don't fail registration if email fails)
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Verify Your Email - JobPortal",
+        message: `Your verification code is: ${verificationCode}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Verify Your Email</h2>
+            <p>Hello ${user.name},</p>
+            <p>Thank you for registering! Please use the following 6-digit code to verify your email:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; display: inline-block;">
+                <h3 style="color: #2563eb; font-size: 32px; letter-spacing: 8px; margin: 0;">
+                  ${verificationCode}
+                </h3>
+              </div>
+            </div>
+            <p>Enter this code on the verification page to complete your registration.</p>
+            <p><strong>This code will expire in 10 minutes.</strong></p>
+            <p>If you didn't create an account, please ignore this email.</p>
+          </div>
+        `
+      });
+      console.log("Verification email sent to:", user.email);
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      // Don't fail registration if email fails
+    }
 
+    // Return success response
     res.status(201).json({
       success: true,
-      message: "Registration successful, email verify کریں",
-      data: { userId: user._id, email: user.email },
+      message: "Registration successful. Please check your email for verification code.",
+      data: {
+        userId: user._id,
+        email: user.email,
+        name: user.name,
+        requiresVerification: true
+      }
     });
 
   } catch (error) {
-    next(error);
+    console.error("Registration error details:", error);
+    
+    // Handle specific Mongoose errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: messages
+      });
+    }
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate field value entered",
+        field: Object.keys(error.keyPattern)[0]
+      });
+    }
+
+    // General server error
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error during registration",
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

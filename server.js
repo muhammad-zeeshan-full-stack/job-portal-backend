@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 import errorHandler from './middleware/error.js';
 import authRoutes from './routes/auth.js';
+import logger from './middleware/logger.js';
 
 dotenv.config();
 connectDB();
@@ -30,7 +31,7 @@ app.use(cookieParser());
 app.use(mongoSanitize());
 app.use(helmet());
 app.use(xss());
-
+app.use(logger);
 // Rate limit
 app.use(rateLimit({
   windowMs: 10 * 60 * 1000,
